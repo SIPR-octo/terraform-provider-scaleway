@@ -196,6 +196,33 @@ func expandBucketCORS(rawCors []interface{}, bucket string) []*s3.CORSRule {
 	return rules
 }
 
+func flattenBucketLifecycleRules(lifecycleResponse *s3.GetBucketLifecycleConfigurationOutput) []interface{} {
+	lifecycleRules := make([]interface{}, 0, len(lifecycleResponse.Rules))
+
+	// corsRules = make([]map[string]interface{}, 0, len(cors.CORSRules))
+	for _, ruleObject := range lifecycleResponse.Rules {
+		rule := map[string]interface{}{
+			"status":          *ruleObject.Status,
+			"name":            *ruleObject.ID,
+			"expiration_days": int(*ruleObject.Expiration.Days),
+		}
+		// rule := make(map[string]interface{})
+		// rule["allowed_headers"] = flattenSliceStringPtr(ruleObject.AllowedHeaders)
+		// rule["allowed_methods"] = flattenSliceStringPtr(ruleObject.AllowedMethods)
+		// rule["allowed_origins"] = flattenSliceStringPtr(ruleObject.AllowedOrigins)
+		// // Both the "ExposeHeaders" and "MaxAgeSeconds" might not be set.
+		// if ruleObject.AllowedOrigins != nil {
+		// 	rule["expose_headers"] = flattenSliceStringPtr(ruleObject.ExposeHeaders)
+		// }
+		// if ruleObject.MaxAgeSeconds != nil {
+		// 	rule["max_age_seconds"] = int(*ruleObject.MaxAgeSeconds)
+		// }
+		lifecycleRules = append(lifecycleRules, rule)
+	}
+
+	return lifecycleRules
+}
+
 func expandBucketLifecycleRules(rawLifecycleRules []interface{}, bucket string) []*s3.LifecycleRule {
 	rules := make([]*s3.LifecycleRule, 0, len(rawLifecycleRules))
 	for _, lifecycleRule := range rawLifecycleRules {
@@ -204,6 +231,7 @@ func expandBucketLifecycleRules(rawLifecycleRules []interface{}, bucket string) 
 		status := rulesMap["status"].(string)
 		expirationDays := rulesMap["expiration_days"].(int)
 		r := &s3.LifecycleRule{
+			Filter: &s3.LifecycleRuleFilter{Prefix: nil},
 			ID:     &name,
 			Status: &status,
 			Expiration: &s3.LifecycleExpiration{

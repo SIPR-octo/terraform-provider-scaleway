@@ -96,6 +96,10 @@ func resourceScalewayObjectBucket() *schema.Resource {
 						"status": {
 							Type:     schema.TypeString,
 							Required: true,
+							ValidateFunc: validation.StringInSlice([]string{
+								s3.ExpirationStatusEnabled,
+								s3.ExpirationStatusDisabled,
+							}, false),
 						},
 						"name": {
 							Type:     schema.TypeString,
@@ -291,6 +295,17 @@ func resourceScalewayObjectBucketRead(ctx context.Context, d *schema.ResourceDat
 		return diag.FromErr(err)
 	}
 	_ = d.Set("versioning", flattenObjectBucketVersioning(versioningResponse))
+
+	// Read the lifecycle
+	lifecycleResponse, err := s3Client.GetBucketLifecycleConfigurationWithContext(ctx, &s3.GetBucketLifecycleConfigurationInput{
+		Bucket: scw.StringPtr(bucketName),
+	})
+
+	if err != nil {
+		return diag.FromErr(fmt.Errorf("error getting S3 Bucket Lifecycle configuration: %s", err))
+	}
+
+	_ = d.Set("lifecycle_rule", flattenBucketLifecycleRules(lifecycleResponse))
 
 	return nil
 }

@@ -440,3 +440,37 @@ func testAccCheckScalewayObjectBucketExists(tt *TestTools, n string) resource.Te
 		return nil
 	}
 }
+
+func TestAccScalewayObjectBucket_LifecycleRules_Update(t *testing.T) {
+	tt := NewTestTools(t)
+	defer tt.Cleanup()
+	bucketName := "test-acc-scaleway-object-bucket-lifecycle-rules-update-000"
+	const resourceName = "scaleway_object_bucket.bucket"
+
+	resource.ParallelTest(t, resource.TestCase{
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: tt.ProviderFactories,
+		CheckDestroy:      testAccCheckScalewayObjectBucketDestroy(tt),
+		Steps: []resource.TestStep{
+			{
+				Config: fmt.Sprintf(`
+					resource "scaleway_object_bucket" "bucket" {
+						name = %[1]q
+						lifecycle_rule {
+							status = "Enabled"
+							name = "rule1"
+							expiration_days = 10
+						}  
+					}`, bucketName),
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckScalewayObjectBucketExists(tt, resourceName),
+					resource.TestCheckResourceAttr("scaleway_object_bucket.bucket", "name", bucketName),
+					resource.TestCheckResourceAttr("scaleway_object_bucket.bucket", "lifecycle_rule.0.status", s3.ExpirationStatusEnabled),
+					resource.TestCheckResourceAttr("scaleway_object_bucket.bucket", "lifecycle_rule.0.expiration_days", "10"),
+					resource.TestCheckResourceAttr("scaleway_object_bucket.bucket", "lifecycle_rule.0.name", "rule1"),
+					resource.TestCheckResourceAttr("scaleway_object_bucket.bucket", "lifecycle_rule.#", "1"),
+				),
+			},
+		},
+	})
+}
