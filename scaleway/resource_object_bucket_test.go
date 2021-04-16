@@ -24,7 +24,7 @@ func TestAccScalewayObjectBucket_Basic(t *testing.T) {
 	tt := NewTestTools(t)
 	defer tt.Cleanup()
 
-	testBucketName := "test-acc-scaleway-object-bucket-basic"
+	testBucketName := "test-acc-scaleway-object-bucket-basic-1234"
 	testBucketNameAms := testBucketName + "-ams"
 	testBucketNamePar := testBucketName + "-par"
 	testBucketACL := "private"
@@ -322,6 +322,7 @@ func TestAccScalewayObjectBucket_Cors_Delete(t *testing.T) {
 }
 
 func TestAccScalewayObjectBucket_Cors_EmptyOrigin(t *testing.T) {
+	t.Skip()
 	tt := NewTestTools(t)
 	defer tt.Cleanup()
 	bucketName := "test-acc-scaleway-object-bucket-cors-empty-origin"
