@@ -195,3 +195,45 @@ func expandBucketCORS(rawCors []interface{}, bucket string) []*s3.CORSRule {
 	}
 	return rules
 }
+
+func expandBucketLifecycleRules(rawLifecycleRules []interface{}, bucket string) []*s3.LifecycleRule {
+	rules := make([]*s3.LifecycleRule, 0, len(rawLifecycleRules))
+	for _, lifecycleRule := range rawLifecycleRules {
+		rulesMap := lifecycleRule.(map[string]interface{})
+		name := rulesMap["name"].(string)
+		status := rulesMap["status"].(string)
+		expirationDays := rulesMap["expiration_days"].(int)
+		r := &s3.LifecycleRule{
+			ID:     &name,
+			Status: &status,
+			Expiration: &s3.LifecycleExpiration{
+				Days: scw.Int64Ptr(int64(expirationDays)),
+			},
+		}
+		// 	for k, v := range corsMap {
+		// 		l.Debugf("S3 bucket: %s, put CORS: %#v, %#v", bucket, k, v)
+		// 		if k == "max_age_seconds" {
+		// 			r.MaxAgeSeconds = scw.Int64Ptr(int64(v.(int)))
+		// 		} else {
+		// 			vMap := make([]*string, len(v.([]interface{})))
+		// 			for i, vv := range v.([]interface{}) {
+		// 				if str, ok := vv.(string); ok {
+		// 					vMap[i] = scw.StringPtr(str)
+		// 				}
+		// 			}
+		// 			switch k {
+		// 			case "allowed_headers":
+		// 				r.AllowedHeaders = vMap
+		// 			case "allowed_methods":
+		// 				r.AllowedMethods = vMap
+		// 			case "allowed_origins":
+		// 				r.AllowedOrigins = vMap
+		// 			case "expose_headers":
+		// 				r.ExposeHeaders = vMap
+		// 			}
+		// 		}
+		// 	}
+		rules = append(rules, r)
+	}
+	return rules
+}

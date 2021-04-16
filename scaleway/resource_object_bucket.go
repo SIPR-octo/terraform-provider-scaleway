@@ -88,6 +88,26 @@ func resourceScalewayObjectBucket() *schema.Resource {
 					},
 				},
 			},
+			"lifecycle_rule": {
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"status": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"name": {
+							Type:     schema.TypeString,
+							Required: true,
+						},
+						"expiration_days": {
+							Type:     schema.TypeInt,
+							Required: true,
+						},
+					},
+				},
+			},
 			"region": regionSchema(),
 			"versioning": {
 				Type:     schema.TypeList,
@@ -191,6 +211,12 @@ func resourceScalewayObjectBucketUpdate(ctx context.Context, d *schema.ResourceD
 
 	if d.HasChange("cors_rule") {
 		if err := resourceScalewayS3BucketCorsUpdate(ctx, s3Client, d); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+
+	if d.HasChange("lifecycle_rule") {
+		if err := resourceScalewayS3BucketLifecycleUpdate(ctx, s3Client, d); err != nil {
 			return diag.FromErr(err)
 		}
 	}
@@ -333,6 +359,40 @@ func resourceScalewayS3BucketCorsUpdate(ctx context.Context, s3conn *s3.S3, d *s
 		_, err := s3conn.PutBucketCorsWithContext(ctx, corsInput)
 		if err != nil {
 			return fmt.Errorf("error putting S3 CORS: %s", err)
+		}
+	}
+
+	return nil
+}
+
+func resourceScalewayS3BucketLifecycleUpdate(ctx context.Context, s3conn *s3.S3, d *schema.ResourceData) error {
+	bucketName := d.Get("name").(string)
+	rawLifecycleRules := d.Get("lifecycle_rule").([]interface{})
+
+	if len(rawLifecycleRules) == 0 {
+		l.Debugf("S3 bucket: %s, delete Lifecycle rules", bucketName)
+
+		lifecycleRulesInput := &s3.DeleteBucketLifecycleInput{
+			Bucket: scw.StringPtr(bucketName),
+		}
+		_, err := s3conn.DeleteBucketLifecycleWithContext(ctx, lifecycleRulesInput)
+
+		if err != nil {
+			return fmt.Errorf("error deleting S3 Lifecycle rules: %s", err)
+		}
+	} else {
+		rules := expandBucketLifecycleRules(rawLifecycleRules, bucketName)
+		lifecycleRulesInput := &s3.PutBucketLifecycleConfigurationInput{
+			Bucket: scw.StringPtr(bucketName),
+			LifecycleConfiguration: &s3.BucketLifecycleConfiguration{
+				Rules: rules,
+			},
+		}
+		l.Debugf("S3 bucket: %s, put Lifecycle rules: %#v", bucketName, lifecycleRulesInput)
+
+		_, err := s3conn.PutBucketLifecycleConfigurationWithContext(ctx, lifecycleRulesInput)
+		if err != nil {
+			return fmt.Errorf("error putting S3 Lifecycle rules: %s", err)
 		}
 	}
 
